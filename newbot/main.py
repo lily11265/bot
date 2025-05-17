@@ -34,6 +34,10 @@ LOG_FILE = 'bot_log.log'
 bot_config = BotConfig(CONFIG_FILE)
 bot_config.load()
 
+# 전역 디버그 설정
+GLOBAL_DEBUG_MODE = True  # 디버그 모드 켜기/끄기
+GLOBAL_VERBOSE_DEBUG = True  # 상세 디버그 켜기/끄기 
+GLOBAL_LOG_TO_FILE = True  # 파일 로깅 켜기/끄기
 # 로거 설정
 DEBUG_MODE = bot_config.logging.get("debug_mode", True)
 VERBOSE_DEBUG = bot_config.logging.get("verbose_debug", True)
@@ -53,69 +57,6 @@ module_loader = ModuleLoader(bot, bot_config)
 
 # 이벤트 매니저 초기화
 event_manager = EventManager(bot, bot_config)
-
-# 봇 준비 이벤트
-@bot.event
-async def on_ready():
-    """봇이 준비되었을 때 초기화"""
-    log_info(f'봇이 로그인되었습니다: {bot.user.name} (ID: {bot.user.id})')
-    log_info(f'Discord.py 버전: {discord.__version__}')
-    log_info(f'Python 버전: {platform.python_version()}')
-    log_info(f'실행 환경: {platform.system()} {platform.release()}')
-    log_info('------')
-    
-    # 설정 디버그 채널 초기화
-    debug_channel_id = bot_config.logging.get("debug_channel_id")
-    if debug_channel_id:
-        channel = bot.get_channel(int(debug_channel_id))
-        if channel:
-            from utils.logger import set_debug_channel
-            set_debug_channel(channel)
-            await channel.send("🟢 봇이 시작되었습니다.")
-            log_info(f"디버그 채널 설정됨: #{channel.name}")
-        else:
-            log_warning(f"디버그 채널을 찾을 수 없습니다: {debug_channel_id}")
-    
-    # 모듈 로딩
-    await module_loader.load_all_modules()
-    
-    # 모듈 설정 적용
-    module_loader.apply_module_settings()
-    
-    # 제어판 설정
-    from control_panel.panel_manager import setup_control_panel
-    setup_control_panel(bot, bot_config)
-    
-    # 이벤트 핸들러 설정
-    event_manager.setup_event_handlers()
-    
-    # 명령어 동기화
-    try:
-        log_info("슬래시 명령어 동기화 중...")
-        synced = await bot.tree.sync()
-        log_info(f"슬래시 명령어 {len(synced)}개 동기화 완료")
-    except Exception as e:
-        log_error(f"명령어 동기화 중 오류 발생: {e}", e)
-    
-    log_info("봇 초기화 완료")
-
-# 메시지 이벤트 처리
-@bot.event
-async def on_message(message):
-    # 봇 메시지 무시
-    if message.author.bot:
-        return
-    
-    # 명령어 처리는 이벤트 매니저에게 위임
-    await event_manager.process_commands(message)
-    
-    # 기본 명령어 처리
-    await bot.process_commands(message)
-
-# 애플리케이션 명령어 오류 처리
-@bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
-    await event_manager.handle_app_command_error(interaction, error)
 
 # 핫 리로딩 기능
 async def hot_reload_task():
@@ -150,6 +91,90 @@ async def hot_reload_task():
             log_error(f"핫 리로딩 작업 중 오류 발생: {e}", e)
             await asyncio.sleep(60)  # 오류 발생 시 더 오래 대기
 
+# main.py 파일에서 on_ready 이벤트 수정
+@bot.event
+async def on_ready():
+    """봇이 준비되었을 때 초기화"""
+    log_info(f'봇이 로그인되었습니다: {bot.user.name} (ID: {bot.user.id})')
+    log_info(f'Discord.py 버전: {discord.__version__}')
+    log_info(f'Python 버전: {platform.python_version()}')
+    log_info(f'실행 환경: {platform.system()} {platform.release()}')
+    log_info('------')
+    
+    # 설정 디버그 채널 초기화
+    debug_channel_id = bot_config.logging.get("debug_channel_id")
+    if debug_channel_id:
+        channel = bot.get_channel(int(debug_channel_id))
+        if channel:
+            from utils.logger import set_debug_channel
+            set_debug_channel(channel)
+            await channel.send("🟢 봇이 시작되었습니다.")
+            log_info(f"디버그 채널 설정됨: #{channel.name}")
+        else:
+            log_warning(f"디버그 채널을 찾을 수 없습니다: {debug_channel_id}")
+    
+    # 모듈 로딩
+    await module_loader.load_all_modules()
+    
+    # 모듈 설정 적용
+    module_loader.apply_module_settings()
+    
+    # 명령어 설정 - 이 부분 추가
+    from commands import setup_commands
+    setup_commands(bot, bot_config)
+    
+    # 제어판 설정
+    from control_panel.panel_manager import setup_control_panel
+    setup_control_panel(bot, bot_config)
+    
+    # 이벤트 핸들러 설정
+    event_manager.setup_event_handlers()
+    
+    # 명령어 동기화
+    try:
+        log_info("슬래시 명령어 동기화 중...")
+        # 명령어 동기화 전 목록 확인
+        before_commands = [cmd.name for cmd in bot.tree.get_commands()]
+        log_debug(f"동기화 전 명령어 목록: {before_commands}", verbose=True)
+        
+        # 관리자 명령어 재등록 강제
+        from commands import register_admin_commands
+        register_admin_commands(bot, bot_config)
+        
+        # 명령어 동기화
+        synced = await bot.tree.sync()
+        log_info(f"슬래시 명령어 {len(synced)}개 동기화 완료")
+        
+        # 동기화 후 명령어 목록 확인
+        after_commands = [cmd.name for cmd in synced]
+        log_debug(f"동기화 후 명령어 목록: {after_commands}", verbose=True)
+        
+        # 관리자 명령어 디버그 로그
+        admin_ids = bot_config.admin_ids
+        log_debug(f"현재 등록된 관리자 ID: {admin_ids}", verbose=True)
+    except Exception as e:
+        log_error(f"명령어 동기화 중 오류 발생: {e}", e)
+    
+    log_info("봇 초기화 완료")
+
+# 메시지 이벤트 처리
+@bot.event
+async def on_message(message):
+    # 봇 메시지 무시
+    if message.author.bot:
+        return
+    
+    # 명령어 처리는 이벤트 매니저에게 위임
+    await event_manager.process_commands(message)
+    
+    # 기본 명령어 처리
+    await bot.process_commands(message)
+
+# 애플리케이션 명령어 오류 처리
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    await event_manager.handle_app_command_error(interaction, error)
+
 # 봇 실행
 def main():
     """봇 메인 함수 - 초기화 및 실행"""
@@ -168,17 +193,12 @@ def main():
     TOKEN = os.getenv('DISCORD_TOKEN')
     if not TOKEN:
         log_warning("환경 변수에서 DISCORD_TOKEN을 찾을 수 없습니다. .env 파일을 확인하세요.")
-        TOKEN = 'YOUR_TOKEN_HERE'  # 기본값 - 실제 토큰으로 교체 필요
+        TOKEN = ''  # 기본값 - 실제 토큰으로 교체 필요
     
     log_debug(f"토큰 형식 확인: 길이={len(TOKEN)}, 시작={TOKEN[:5]}...", verbose=True)
     
     try:
-        # 핫 리로딩 설정
-        if bot_config.get("enable_hot_reload", False):
-            log_info("핫 리로딩이 활성화되었습니다.")
-            bot.loop.create_task(hot_reload_task())
-        
-        # 봇 실행
+        # 봇 실행 (핫 리로딩 태스크는 on_ready에서 시작)
         log_debug("bot.run() 호출로 메인 이벤트 루프 시작", verbose=True)
         log_info(f"Discord 봇 실행 - 플랫폼: {platform.system()} {platform.release()}")
         bot.run(TOKEN)

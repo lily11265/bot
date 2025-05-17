@@ -150,7 +150,7 @@ def log_error(message: str, exc_info: Optional[Exception] = None) -> None:
 
 def load_json(file_path: str, default: Dict = None) -> Dict:
     """
-    JSON 파일 로드
+    JSON 파일 로드 (json 폴더 내에서 로드)
     
     Args:
         file_path (str): 파일 경로
@@ -161,21 +161,32 @@ def load_json(file_path: str, default: Dict = None) -> Dict:
     """
     if default is None:
         default = {}
-        
+    
     try:
-        if os.path.exists(file_path):
+        # 원본 파일 경로에서 디렉토리와 파일명 분리
+        file_dir = os.path.dirname(os.path.abspath(file_path))
+        file_name = os.path.basename(file_path)
+        
+        # json 폴더 내 파일 경로 구성
+        json_dir = os.path.join(file_dir, 'json')
+        json_file_path = os.path.join(json_dir, file_name)
+        
+        # 실제 확인할 파일 경로 (우선적으로 json 폴더 내 파일 확인)
+        actual_file_path = json_file_path if os.path.exists(json_file_path) else file_path
+        
+        if os.path.exists(actual_file_path):
             encodings = ['utf-8', 'utf-8-sig', 'cp949', 'euc-kr']
             for encoding in encodings:
                 try:
-                    with open(file_path, 'r', encoding=encoding) as f:
+                    with open(actual_file_path, 'r', encoding=encoding) as f:
                         return json.load(f)
                 except (UnicodeDecodeError, json.JSONDecodeError):
                     continue
-            # 모든 인코딩을 시도해도 실패하면 경고 로그
-            log_warning(f"파일을 읽을 수 없습니다 (인코딩 문제): {file_path}. 기본값 반환.")
+            # a모든 인코딩을 시도해도 실패하면 경고 로그
+            log_warning(f"파일을 읽을 수 없습니다 (인코딩 문제): {actual_file_path}. 기본값 반환.")
             return default
         else:
-            log_warning(f"파일이 존재하지 않습니다: {file_path}. 기본값 반환.")
+            log_warning(f"파일이 존재하지 않습니다: {file_path} (json 폴더 내 {json_file_path}). 기본값 반환.")
             return default
     except Exception as e:
         log_error(f"JSON 파일 로드 중 오류: {e}", e)
@@ -183,10 +194,10 @@ def load_json(file_path: str, default: Dict = None) -> Dict:
 
 def save_json(file_path: str, data: Dict, indent: int = 2) -> bool:
     """
-    JSON 파일 저장
+    JSON 파일 저장 (json 폴더 내에 저장)
     
     Args:
-        file_path (str): 파일 경로
+        file_path (str): 파일 경로 (파일명만 제공시 json 폴더에 저장)
         data (Dict): 저장할 데이터
         indent (int): 들여쓰기 크기
         
@@ -194,7 +205,20 @@ def save_json(file_path: str, data: Dict, indent: int = 2) -> bool:
         bool: 성공 여부
     """
     try:
-        with open(file_path, 'w', encoding='utf-8') as f:
+        # json 폴더 경로 생성
+        json_dir = os.path.join(os.path.dirname(os.path.abspath(file_path)), 'json')
+        
+        # 파일명만 추출
+        file_name = os.path.basename(file_path)
+        
+        # json 폴더가 없으면 생성
+        if not os.path.exists(json_dir):
+            os.makedirs(json_dir)
+        
+        # json 폴더 내에 파일 경로 설정
+        json_file_path = os.path.join(json_dir, file_name)
+        
+        with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=indent)
         return True
     except Exception as e:
@@ -615,8 +639,8 @@ async def check_requirement(player_name, requirement_type, requirement_value):
         if requirement_type == "호감도":
             # 호감도 확인 로직
             # affection.py에서 가져온 get_feeling 함수 사용
-            import affection
-            feelings = await affection.get_feeling(pure_name, requirement_value.split(':')[0])
+            import file.affection
+            feelings = await file.affection.get_feeling(pure_name, requirement_value.split(':')[0])
             if feelings and len(feelings) > 0:
                 required_level = int(requirement_value.split(':')[1])
                 return feelings[0]["feeling"] >= required_level

@@ -94,7 +94,7 @@ class ModuleLoader:
             
             # 모듈 파일 수정 시간 추적 (핫 리로딩용)
             try:
-                module_file = f"{module_name}.py"
+                module_file = f"file/{module_name}.py"
                 if os.path.exists(module_file):
                     self.last_modified_times[module_name] = os.path.getmtime(module_file)
             except Exception as e:
@@ -108,7 +108,7 @@ class ModuleLoader:
             else:
                 log_debug(f"새 모듈 가져오기: {module_name}")
                 # 아니라면 가져오기
-                module = importlib.import_module(module_name)
+                module = importlib.import_module(f"file.{module_name}")
             
             # 디버그 매니저에 모듈 등록
             from debug_manager import debug_manager
@@ -204,7 +204,7 @@ class ModuleLoader:
             if not loaded:
                 continue
             
-            module_file = f"{module_name}.py"
+            module_file = f"file/{module_name}.py"
             if not os.path.exists(module_file):
                 continue
             

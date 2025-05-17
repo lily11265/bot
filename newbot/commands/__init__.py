@@ -6,8 +6,8 @@
 - 이벤트 핸들러
 """
 
-from .event_handlers import setup_event_handlers
-from .admin_commands import register_admin_commands
+from commands.event_handlers import setup_event_handlers
+from commands.admin_commands import register_admin_commands
 
 __all__ = [
     'setup_event_handlers',

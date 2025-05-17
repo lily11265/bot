@@ -81,13 +81,13 @@ class WeatherBasicSettingsModal(discord.ui.Modal, title="날씨 시스템 기본
             
             # 날씨 시스템에 설정 적용
             try:
-                import weather
-                if hasattr(weather, 'GLOBAL_SETTINGS'):
-                    weather.GLOBAL_SETTINGS['ENABLE_WEATHER_SYSTEM'] = new_settings['enable_weather_system']
-                    weather.GLOBAL_SETTINGS['ENABLE_CHANNEL_SPECIFIC_WEATHER'] = new_settings['enable_channel_specific_weather']
-                    weather.GLOBAL_SETTINGS['HORROR_MODE_PROBABILITY'] = new_settings['horror_mode_probability']
-                    weather.GLOBAL_SETTINGS['UNIQUE_ITEM_PROBABILITY'] = new_settings['unique_item_probability']
-                    weather.GLOBAL_SETTINGS['NOTIFY_WEATHER_CHANGES'] = new_settings['notify_weather_changes']
+                import file.weather
+                if hasattr(file.weather, 'GLOBAL_SETTINGS'):
+                    file.weather.GLOBAL_SETTINGS['ENABLE_WEATHER_SYSTEM'] = new_settings['enable_weather_system']
+                    file.weather.GLOBAL_SETTINGS['ENABLE_CHANNEL_SPECIFIC_WEATHER'] = new_settings['enable_channel_specific_weather']
+                    file.weather.GLOBAL_SETTINGS['HORROR_MODE_PROBABILITY'] = new_settings['horror_mode_probability']
+                    file.weather.GLOBAL_SETTINGS['UNIQUE_ITEM_PROBABILITY'] = new_settings['unique_item_probability']
+                    file.weather.GLOBAL_SETTINGS['NOTIFY_WEATHER_CHANGES'] = new_settings['notify_weather_changes']
             except ImportError:
                 log_warning("날씨 모듈을 가져올 수 없습니다. 설정만 저장됨.")
             
@@ -114,8 +114,8 @@ class WeatherChannelSelectorView(discord.ui.View):
         
         # 날씨 모듈 가져오기
         try:
-            import weather
-            self.global_settings = weather.GLOBAL_SETTINGS
+            import file.weather
+            self.global_settings = file.weather.GLOBAL_SETTINGS
         except ImportError:
             self.global_settings = {"ANNOUNCEMENT_CHANNEL_NAME": ""}
         
@@ -202,8 +202,8 @@ class WeatherChannelSelectorView(discord.ui.View):
             if channel:
                 # 날씨 모듈에 설정 적용
                 try:
-                    import weather
-                    weather.GLOBAL_SETTINGS["ANNOUNCEMENT_CHANNEL_NAME"] = channel.name
+                    import file.weather
+                    file.weather.GLOBAL_SETTINGS["ANNOUNCEMENT_CHANNEL_NAME"] = channel.name
                     
                     # 설정 저장
                     weather_cog = interaction.client.get_cog('WeatherCommands')
@@ -231,8 +231,8 @@ class WeatherChannelGroupModal(discord.ui.Modal):
         
         # 날씨 모듈 가져오기
         try:
-            import weather
-            self.channel_groups = weather.CHANNEL_GROUPS
+            import file.weather
+            self.channel_groups = file.weather.CHANNEL_GROUPS
         except ImportError:
             self.channel_groups = {}
         
@@ -293,7 +293,7 @@ ID: 789012
     async def on_submit(self, interaction):
         try:
             # 날씨 모듈 가져오기
-            import weather
+            import file.weather
             
             # 새로운 채널 ID 세트 생성
             new_channel_ids = set()
@@ -355,7 +355,7 @@ ID: 789012
                 warnings.append(f"⚠️ 유효하지 않은 스레드 ID: {', '.join(invalid_thread_ids)}")
             
             # 날씨 시스템 설정 업데이트
-            weather.CHANNEL_GROUPS[self.group_name] = new_channel_ids
+            file.weather.CHANNEL_GROUPS[self.group_name] = new_channel_ids
             
             # 설정 저장
             weather_cog = interaction.client.get_cog('WeatherCommands')
@@ -470,8 +470,8 @@ async def handle_weather_settings(interaction, bot, bot_config):
     # 날씨 모듈의 GLOBAL_SETTINGS 접근
     try:
         # 모듈에서 직접 GLOBAL_SETTINGS 가져오기
-        import weather
-        global_settings = weather.GLOBAL_SETTINGS
+        import file.weather
+        global_settings = file.weather.GLOBAL_SETTINGS
         
         # 채널 그룹 로드 확인
         if hasattr(weather_cog.weather_system, 'load_channel_groups'):
@@ -500,7 +500,7 @@ async def handle_weather_settings(interaction, bot, bot_config):
         
         # 채널 그룹 정보 추가
         channel_groups_info = []
-        for group_name, channel_ids in weather.CHANNEL_GROUPS.items():
+        for group_name, channel_ids in file.weather.CHANNEL_GROUPS.items():
             channel_groups_info.append(f"{group_name}: {len(channel_ids)}개 채널/스레드")
         
         if channel_groups_info:
