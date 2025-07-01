@@ -35,7 +35,7 @@ from cafe import init_cafe_system, handle_message as handle_cafe_message
 
 logging.basicConfig(
 level=logging.INFO,
-format=’%(asctime)s - %(name)s - %(levelname)s - %(message)s’,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 handlers=[
 logging.FileHandler(‘bot.log’, encoding=‘utf-8’, mode=‘a’),  # append 모드
 logging.StreamHandler()
