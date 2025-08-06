@@ -154,8 +154,6 @@ class SnowmanGame:
         
         # 이동 태스크 시작
         game_data["move_task"] = asyncio.create_task(self._auto_move(channel_id))
-        
-        logger.info(f"Snowman game started in channel {channel_id} by user {user_id}")
     
     async def start_game_direct(self, channel, user):
         """채널에 직접 게임 시작 (defer된 인터랙션용)"""
@@ -198,8 +196,6 @@ class SnowmanGame:
         
         # 이동 태스크 시작
         game_data["move_task"] = asyncio.create_task(self._auto_move(channel_id))
-        
-        logger.info(f"Snowman game started directly in channel {channel_id} by user {user.id}")
     
     def _create_field(self) -> List[List[str]]:
         """게임 필드 생성"""
@@ -234,7 +230,7 @@ class SnowmanGame:
         """굴리기 단계 임베드"""
         embed = discord.Embed(
             title="❄️ 눈사람 만들기 - 눈 굴리기",
-            description="버튼으로 눈을 굴려 크게 만들어보세요!",
+            description="방향키로 눈을 굴려 크게 만들어보세요!",
             color=discord.Color.blue()
         )
         
@@ -369,8 +365,6 @@ class SnowmanGame:
         game_data = self.active_games.get(channel_id)
         if not game_data:
             return
-        
-        logger.info(f"Button pressed: {button} in channel {channel_id}, phase: {game_data['phase']}")
         
         if game_data["phase"] == GamePhase.ROLLING:
             await self._handle_rolling_button(channel_id, button)
@@ -615,7 +609,7 @@ class SnowmanGame:
         total_score = sum(ball.size for ball in game_data["snowballs"]) * game_data["current_height"]
         
         # 리더보드 업데이트
-        guild_id = game_data["message"].guild.id if game_data.get("message") and game_data["message"].guild else 0
+        guild_id = game_data["message"].guild.id if game_data.get("message") else 0
         await self._update_leaderboard(guild_id, game_data["user"], total_score, game_data["current_height"])
         
         # 최종 결과 표시
